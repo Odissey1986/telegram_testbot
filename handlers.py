@@ -19,10 +19,11 @@ def progres_bar(value: int, lenght: int):
 
 async def register_handlers(dp: Dispatcher):
     dp.message.register(start_handler, Command("start"))
-    dp.message.register(feed_pet, F.text == "🌯Покормить")
-    dp.message.register(play_pet, F.text == "⚽Поиграть")
-    dp.message.register(status_pet, F.text == "📜Статус")
-    dp.message.register(sleep_pet, F.text == "🛏Спать")
+    dp.message.register(feed_pet, F.text == BTN_FEED)
+    dp.message.register(play_pet, F.text == BTN_PLAY)
+    dp.message.register(status_pet, F.text == BTN_STATUS)
+    dp.message.register(sleep_pet, F.text == BTN_SLEEP)
+    dp.callback_query.register(food_callback_handler, lambda c: c.data.startswith("feed_"))
 
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
@@ -101,3 +102,34 @@ async def sleep_pet(message: types.Message):
     pet["hunger"] = min(pet["hunger"] - 5, 100)
     pet["energy"] = max(pet["energy"] + 15, 0)
     await message.answer(f"{pet['name']} славно выспался!")
+
+async def food_callback_handler(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+
+    if user_id not in pets:
+        await callback.message.edit_text("Сначала запусти бота с помощью команды /start")
+        return
+    
+    pet = pets[user_id]
+    food = callback.data
+    message = ""
+
+    if food == "feed_shawarma":
+        h = pet["hunger"] + 20
+        message = f"Вы покормили {pet['name']} вкусной шавухой!"
+
+    elif food == "feed_steak":
+        h = pet["hunger"] + 20
+        message = f"Вы покормили {pet['name']} вкусным стейком!"
+
+    elif food == "feed_tea":
+        h = pet["hunger"] + 10
+        message = f"Вы напоили {pet['name']} вкусным чаем!"
+
+    pet["hunger"] = min(100, h)
+
+    await callback.message.edit_text(message)
+    await callback.answer(
+        f"Сытость {pet['name']} -- {pet['hunger']}/100\n"
+        f"{progres_bar(pet['hunger'], 10)}"
+        )
