@@ -1,4 +1,4 @@
-from db import pets
+from db import get_pet, update_pet, create_pet
 
 from aiogram import Dispatcher, types, F
 from aiogram.filters import Command
@@ -27,58 +27,52 @@ async def register_handlers(dp: Dispatcher):
 
 async def start_handler(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id not in pets:
-        new_pet = {
-            "name": "Pushok 🐱‍👤",
-            "hunger": 50,
-            "energy": 50,
-            "happiness": 50,
-        }
-        pets[user_id] = new_pet
+    pet = await get_pet(user_id)
+    if pet is None:
+        await create_pet(user_id, "Pushok 🐱‍👤")
+        pet = await get_pet(user_id)
 
     await message.answer(
         f"Привет, {message.from_user.first_name}\n"
-        f"Познакомся со своим питомцем: {pets[user_id]["name"]}\n"
+        f"Познакомся со своим питомцем: {pet["name"]}\n"
         f"Позаботься о нём!",
         reply_markup=main_kb
     )
 
 async def feed_pet(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id not in pets:
+    pet = await get_pet(user_id)
+    if user_id not in pet:
         await message.answer("Сначала запусти бота с помощью команды /start")
         return
-    pet = pets[user_id]
-    await message.answer(
-        f"Чем вы хотите покормить {pet['name']}?", 
-        reply_markup=food_kb
-    )
+    pet["hunger"] = min(pet["hunger"] + 10, 100)
+    pet["energy"] = max(pet["energy"] - 5, 0)
 
-    # pet["hunger"] = min(pet["hunger"] + 10, 100)
-    # pet["energy"] = max(pet["energy"] - 5, 0)
-    # await message.answer(f"{pet['name']} слопал пол холодильника!")
+    await update_pet(
+        user_id = user_id,
+        name = pet["name"],
+        hunger = pet["name"],
+        happiness = pet["happiness"],
+        energy = pet["energy"]
+    )
+    await message.answer(f"{pet['name']} слопал пол холодильника!")
 
 async def play_pet(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id not in pets:
+    pet = await get_pet(user_id)
+    if user_id not in pet:
         await message.answer("Сначала запусти бота с помощью команды /start")
         return
-    pet = pets[user_id]
     pet["happiness"] = min(pet["happiness"] + 10, 100)
     pet["energy"] = max(pet["energy"] - 15, 0)
     await message.answer(f"{pet['name']} классно поиграл!")
 
 async def status_pet(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id not in pets:
+    pet = await get_pet(user_id)
+    if user_id not in pet:
         await message.answer("Сначала запусти бота с помощью команды /start")
         return
-    pet = pets[user_id]
-
     hun = pet['hunger']
     en = pet['energy']
     hap = pet['happiness']
@@ -93,11 +87,10 @@ async def status_pet(message: types.Message):
 
 async def sleep_pet(message: types.Message):
     user_id = message.from_user.id
-
-    if user_id not in pets:
+    pet = await get_pet(user_id)
+    if user_id not in pet:
         await message.answer("Сначала запусти бота с помощью команды /start")
         return
-    pet = pets[user_id]
     pet["happiness"] = min(pet["happiness"] + 10, 100)
     pet["hunger"] = min(pet["hunger"] - 5, 100)
     pet["energy"] = max(pet["energy"] + 15, 0)
@@ -105,12 +98,10 @@ async def sleep_pet(message: types.Message):
 
 async def food_callback_handler(callback: types.CallbackQuery):
     user_id = callback.from_user.id
-
-    if user_id not in pets:
-        await callback.message.edit_text("Сначала запусти бота с помощью команды /start")
+    pet = await get_pet(user_id)
+    if user_id not in pet:
+        await message.answer("Сначала запусти бота с помощью команды /start")
         return
-    
-    pet = pets[user_id]
     food = callback.data
     message = ""
 
@@ -128,8 +119,33 @@ async def food_callback_handler(callback: types.CallbackQuery):
 
     pet["hunger"] = min(100, h)
 
+    await update_pet(
+        user_id = user_id,
+        name = pet["name"],
+        hunger = pet["name"],
+        happiness = pet["happiness"],
+        energy = pet["energy"]
+    )
+
     await callback.message.edit_text(message)
     await callback.answer(
         f"Сытость {pet['name']} -- {pet['hunger']}/100\n"
         f"{progres_bar(pet['hunger'], 10)}"
         )
+    
+
+# _____________________________________________________________
+# if user_id not in pets:
+#         new_pet = {
+#             "name": "Pushok 🐱‍👤",
+#             "hunger": 50,
+#             "energy": 50,
+#             "happiness": 50,
+#         }
+#         pets[user_id] = new_pet
+
+# pet = pets[user_id]
+#     await message.answer(
+#         f"Чем вы хотите покормить {pet['name']}?", 
+#         reply_markup=food_kb
+#     )
